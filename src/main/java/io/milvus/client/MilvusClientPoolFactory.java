@@ -4,11 +4,15 @@ import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.PooledObjectFactory;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 
-/**
- * MilvusClientPool - TODO
- *
- */
+import java.util.concurrent.BlockingQueue;
+
 public class MilvusClientPoolFactory implements PooledObjectFactory<MilvusClient> {
+
+    private final BlockingQueue<ConnectParam> connectParamQueue;
+
+    public MilvusClientPoolFactory(BlockingQueue<ConnectParam> connectParamQueue) {
+        this.connectParamQueue = connectParamQueue;
+    }
 
     @Override
     public void activateObject(PooledObject<MilvusClient> p) throws Exception {
@@ -19,12 +23,13 @@ public class MilvusClientPoolFactory implements PooledObjectFactory<MilvusClient
         p.getObject().close();
     }
 
- @Override
-	public PooledObject<MilvusClient> makeObject() throws Exception {
-		ConnectParam param = new ConnectParam.Builder().withPort().withHost().build();
-		MilvusClient client = new MilvusGrpcClient(param);
-		return new DefaultPooledObject<>(client);
-	}
+    @Override
+    public PooledObject<MilvusClient> makeObject() throws Exception {
+        ConnectParam poll = connectParamQueue.poll();
+        connectParamQueue.add(poll);
+        MilvusClient client = new MilvusGrpcClient(poll);
+        return new DefaultPooledObject<>(client);
+    }
 
     @Override
     public void passivateObject(PooledObject<MilvusClient> p) throws Exception {
