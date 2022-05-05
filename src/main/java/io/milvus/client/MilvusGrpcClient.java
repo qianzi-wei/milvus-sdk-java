@@ -24,17 +24,15 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.protobuf.ByteString;
-import io.grpc.CallOptions;
-import io.grpc.Channel;
-import io.grpc.ClientCall;
-import io.grpc.ClientInterceptor;
-import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
-import io.grpc.MethodDescriptor;
-import io.grpc.StatusRuntimeException;
+import io.grpc.*;
 import io.milvus.client.exception.InitializationException;
 import io.milvus.client.exception.UnsupportedServerVersion;
+import io.milvus.grpc.Status;
 import io.milvus.grpc.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nonnull;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -42,12 +40,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
-import javax.annotation.Nonnull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class MilvusGrpcClient extends AbstractMilvusGrpcClient {
-  private static String SUPPORTED_SERVER_VERSION = "1.1";
+  private static final String SUPPORTED_SERVER_VERSION = "1.1";
   private final ManagedChannel channel;
   private final MilvusServiceGrpc.MilvusServiceBlockingStub blockingStub;
   private final MilvusServiceGrpc.MilvusServiceFutureStub futureStub;
@@ -67,7 +62,7 @@ public class MilvusGrpcClient extends AbstractMilvusGrpcClient {
     try {
       Response response = getServerVersion();
       if (response.ok()) {
-        String serverVersion = getServerVersion().getMessage();
+        String serverVersion = response.getMessage();
         if (!serverVersion.matches("^" + SUPPORTED_SERVER_VERSION + "(\\..*)?$")) {
           throw new UnsupportedServerVersion(connectParam.getHost(), SUPPORTED_SERVER_VERSION, serverVersion);
         }
